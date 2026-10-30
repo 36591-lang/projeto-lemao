@@ -1,0 +1,709 @@
+/* ================================================================
+       VARIÁVEIS — edite aqui para personalizar cores e fontes
+    ================================================================ */
+    :root {
+      --bg:            #0a0a0a;
+      --bg-card:       #111111;
+      --bg-card-hover: #161616;
+      --white:         #ffffff;
+      --gray:          rgba(255,255,255,0.50);
+      --gray-dim:      rgba(255,255,255,0.25);
+      --border:        rgba(255,255,255,0.10);
+      --border-hover:  rgba(255,255,255,0.65);
+      --font-sans:     'Inter', system-ui, sans-serif;
+      --font-mono:     'JetBrains Mono', 'Courier New', monospace;
+      --ease-cube:     cubic-bezier(0.77, 0, 0.175, 1);
+      --duration:      900ms;
+    }
+
+    /* ================================================================
+       RESET GLOBAL
+    ================================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--white);
+      font-family: var(--font-sans);
+      overflow: hidden;           /* O cubo controla o scroll */
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    img { max-width: 100%; display: block; }
+    a   { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; background: none; border: none; }
+
+    /* ================================================================
+       GRADE DE FUNDO (sutil, opcional)
+    ================================================================ */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ================================================================
+       CUBO 3D — wrapper e faces
+    ================================================================ */
+    #viewport {
+      position: fixed;
+      inset: 0;
+      perspective: 1400px;
+      perspective-origin: 50% 50%;
+      z-index: 1;
+    }
+
+    #cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      will-change: transform;
+      /* transição aplicada via JS para poder controlá-la */
+    }
+
+    /* Cada "face" ocupa a tela inteira */
+    .face {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-y: auto;           /* rolagem interna se conteúdo maior que tela */
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /*
+      Posição de cada face no "cubo" vertical:
+      - face 0: frente  (angle 0°)
+      - face 1: topo    (rotateX +90° e vira pra frente no scroll pra baixo)
+      - face 2: parte de trás (180°)
+      - face 3: base    (270°)
+      Cada face fica translateZ(halfVH) para fechar o cubo.
+      halfVH é calculado e aplicado pelo JavaScript ao iniciar.
+    */
+
+    /* ================================================================
+       BOLINHAS DE NAVEGAÇÃO LATERAL
+    ================================================================ */
+    #nav-dots {
+      position: fixed;
+      right: clamp(14px, 3vw, 28px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 100;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.50);
+      background: transparent;
+      transition: background 0.3s, transform 0.3s, border-color 0.3s;
+      padding: 0;
+    }
+
+    .dot.active {
+      background: var(--white);
+      border-color: var(--white);
+      transform: scale(1.45);
+    }
+
+    /* ================================================================
+       ANIMAÇÃO DE ENTRADA — fadeUp escalonada
+    ================================================================ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    .anim {
+      opacity: 0;
+    }
+
+    .anim.play {
+      animation: fadeUp 0.65s var(--ease-cube) forwards;
+    }
+
+    /* delays escalonados */
+    .anim:nth-child(1)  { animation-delay: 0.05s; }
+    .anim:nth-child(2)  { animation-delay: 0.16s; }
+    .anim:nth-child(3)  { animation-delay: 0.27s; }
+    .anim:nth-child(4)  { animation-delay: 0.38s; }
+    .anim:nth-child(5)  { animation-delay: 0.49s; }
+    .anim:nth-child(6)  { animation-delay: 0.60s; }
+    .anim:nth-child(7)  { animation-delay: 0.71s; }
+
+    /* ================================================================
+       SEÇÃO 0 — INÍCIO / FOTO
+    ================================================================ */
+    #face-0 {
+      flex-direction: column;
+      text-align: center;
+      gap: clamp(16px, 3vh, 28px);
+      padding: clamp(24px, 6vw, 80px);
+    }
+
+    /* Foto circular */
+    .photo-wrap {
+      position: relative;
+      width:  clamp(130px, 28vw, 220px);
+      height: clamp(130px, 28vw, 220px);
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .photo-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.45);
+      animation: pulse-ring 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 0.45; transform: scale(1);    }
+      50%       { opacity: 0.90; transform: scale(1.05); }
+    }
+
+    .photo-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center top;
+      border: 1.5px solid rgba(255,255,255,0.55);
+    }
+
+    /* Nome com efeito decode */
+    #name-text {
+      font-family: var(--font-mono);
+      font-size: clamp(1.7rem, 6vw, 3.6rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--white);
+      min-height: 1.2em;
+      white-space: nowrap;
+    }
+
+    .hero-sub {
+      font-size: clamp(0.72rem, 2vw, 0.88rem);
+      color: var(--gray);
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* Indicador "role" */
+    .scroll-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-dim);
+      font-size: 0.70rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      position: absolute;
+      bottom: clamp(20px, 4vh, 40px);
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: clamp(28px, 4vh, 44px);
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.45));
+      animation: scrollAnim 2s ease-in-out infinite;
+    }
+
+    @keyframes scrollAnim {
+      0%, 100% { opacity: 0.3; transform: scaleY(0.6) translateY(-6px); }
+      60%       { opacity: 1;   transform: scaleY(1)   translateY(0);    }
+    }
+
+    /* ================================================================
+       SEÇÃO 1 — SOBRE MIM
+    ================================================================ */
+    #face-1 {
+      flex-direction: column;
+      padding: clamp(32px, 8vw, 100px);
+    }
+
+    .about-inner {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(16px, 3vh, 28px);
+    }
+
+    /* Label de seção */
+    .sec-label {
+      font-family: var(--font-mono);
+      font-size: clamp(0.68rem, 1.5vw, 0.78rem);
+      color: var(--gray);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sec-label::before {
+      content: '';
+      width: 28px;
+      height: 1px;
+      background: var(--gray);
+      flex-shrink: 0;
+    }
+
+    /* Títulos de seção */
+    .sec-title {
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.10;
+      letter-spacing: -0.025em;
+    }
+
+    .sec-divider {
+      width: 44px;
+      height: 1px;
+      background: rgba(255,255,255,0.25);
+    }
+
+    .sec-text {
+      color: var(--gray);
+      font-size: clamp(0.88rem, 2vw, 1.02rem);
+      line-height: 1.90;
+      font-weight: 300;
+    }
+
+    .sec-text strong {
+      color: var(--white);
+      font-weight: 500;
+    }
+
+    /* ================================================================
+       SEÇÃO 2 — PROJETOS
+    ================================================================ */
+    #face-2 {
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: clamp(24px, 6vw, 64px) clamp(20px, 6vw, 64px);
+      overflow-y: auto;
+      gap: 0;
+    }
+
+    .projects-inner {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(28px, 5vh, 48px);
+    }
+
+    .projects-header {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 18px);
+    }
+
+    /* Grade de cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(14px, 2.5vw, 24px);
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: clamp(20px, 3vw, 32px) clamp(16px, 2.5vw, 28px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 16px);
+      transition:
+        border-color  0.30s ease,
+        transform     0.30s var(--ease-cube),
+        box-shadow    0.30s ease,
+        background    0.30s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+      transform: translateY(-5px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+    }
+
+    .card-num {
+      font-family: var(--font-mono);
+      font-size: clamp(0.65rem, 1.2vw, 0.75rem);
+      color: var(--gray-dim);
+      letter-spacing: 0.15em;
+    }
+
+    .card-title {
+      font-size: clamp(0.95rem, 1.8vw, 1.10rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .card-desc {
+      font-size: clamp(0.78rem, 1.4vw, 0.88rem);
+      color: var(--gray);
+      line-height: 1.72;
+      flex: 1;
+    }
+
+    .card-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: clamp(6px, 1vh, 10px);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-sans);
+      font-size: clamp(0.68rem, 1.2vw, 0.76rem);
+      font-weight: 500;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border-radius: 2px;
+      transition: background 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+      white-space: nowrap;
+    }
+
+    .btn-outline {
+      border: 1px solid rgba(255,255,255,0.32);
+      color: var(--white);
+    }
+
+    .btn-outline:hover {
+      background: var(--white);
+      color: var(--bg);
+      border-color: var(--white);
+    }
+
+    .btn-ghost {
+      border: 1px solid transparent;
+      color: var(--gray);
+    }
+
+    .btn-ghost:hover {
+      color: var(--white);
+      border-color: rgba(255,255,255,0.20);
+    }
+
+    /* ================================================================
+       SEÇÃO 3 — HABILIDADES
+    ================================================================ */
+    #face-3 {
+      flex-direction: column;
+      padding: clamp(32px, 8vw, 100px) clamp(20px, 6vw, 80px);
+      gap: 0;
+    }
+
+    .skills-inner {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(28px, 5vh, 52px);
+    }
+
+    .skills-header {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 18px);
+    }
+
+    /* Grade de habilidades */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(12px, 2vw, 20px);
+    }
+
+    .skill-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: clamp(22px, 3vw, 36px) clamp(16px, 2vw, 24px);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: clamp(12px, 2vh, 20px);
+      transition: border-color 0.30s ease, transform 0.30s var(--ease-cube);
+    }
+
+    .skill-card:hover {
+      border-color: rgba(255,255,255,0.35);
+      transform: translateY(-4px);
+    }
+
+    .skill-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .skill-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--white);
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .skill-name {
+      font-size: clamp(0.82rem, 1.5vw, 0.96rem);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .skill-desc {
+      font-size: clamp(0.72rem, 1.3vw, 0.82rem);
+      color: var(--gray);
+      line-height: 1.65;
+    }
+
+    /* ================================================================
+       MEDIA QUERIES
+    ================================================================ */
+
+    /* Tablet: 1024px */
+    @media (max-width: 1024px) {
+      .skills-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Tablet pequeno / landscape mobile: 768px */
+    @media (max-width: 768px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+        max-width: 480px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      #face-2 {
+        justify-content: flex-start;
+        padding-top: clamp(20px, 5vw, 40px);
+      }
+    }
+
+    /* Mobile: 480px */
+    @media (max-width: 480px) {
+      #name-text {
+        font-size: clamp(1.4rem, 7.5vw, 2rem);
+      }
+
+      .skills-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .skill-card {
+        padding: 20px 16px;
+      }
+
+      .card {
+        padding: 18px 16px;
+      }
+
+      #face-1 { padding: 28px 22px; }
+      #face-3 { padding: 28px 22px; }
+
+      .about-inner { max-width: 100%; }
+      .skills-inner { max-width: 100%; }
+    }
+
+/* ================================================================
+   AJUSTES EXTRAS DE RESPONSIVIDADE E ACESSIBILIDADE
+================================================================ */
+:focus-visible {
+  outline: 2px solid rgba(255,255,255,.9);
+  outline-offset: 4px;
+}
+
+.face {
+  min-height: 100dvh;
+}
+
+#face-2,
+#face-3 {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.28) transparent;
+}
+
+#face-2::-webkit-scrollbar,
+#face-3::-webkit-scrollbar {
+  width: 6px;
+}
+
+#face-2::-webkit-scrollbar-thumb,
+#face-3::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.28);
+  border-radius: 20px;
+}
+
+@media (max-height: 650px) and (min-width: 769px) {
+  #face-0 {
+    gap: 12px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .photo-wrap {
+    width: clamp(105px, 20vh, 170px);
+    height: clamp(105px, 20vh, 170px);
+  }
+
+  #face-1, #face-3 {
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow: hidden;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  #nav-dots {
+    right: 12px;
+    gap: 10px;
+  }
+
+  .dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .face {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  #face-0 {
+    padding-bottom: 76px;
+  }
+
+  .scroll-hint {
+    bottom: 18px;
+  }
+
+  #face-2 {
+    padding-bottom: 32px;
+  }
+
+  .projects-inner,
+  .skills-inner {
+    max-width: 620px;
+  }
+}
+
+@media (max-width: 480px) {
+  #name-text {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .hero-sub {
+    letter-spacing: .12em;
+    line-height: 1.6;
+  }
+
+  .sec-title {
+    overflow-wrap: anywhere;
+  }
+
+  .card-btns {
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 9px 12px;
+    letter-spacing: .06em;
+  }
+
+  #nav-dots {
+    right: 9px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+
+
+/* ================================================================
+   CORREÇÃO DE POSICIONAMENTO DAS FACES 3D
+   Mantém o conteúdo centralizado e evita cortes quando há overflow.
+================================================================ */
+#face-1,
+#face-3 {
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.about-inner,
+.skills-inner {
+  margin-block: auto;
+  flex-shrink: 0;
+}
